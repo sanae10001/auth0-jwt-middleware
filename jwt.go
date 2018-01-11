@@ -15,14 +15,22 @@ const (
 	Bearer              = "bearer"
 )
 
+var (
+	UserContextKey = ContextKey{Name: "user"}
+)
+
 type (
 	// A function called before set value into context
-	ContextValueHandler func(claims interface{}) (interface{}, error)
+	ContextSetValueFunc func(claims interface{}) (interface{}, error)
 
 	// A function called when an error is encountered
 	ErrorHandler func(w http.ResponseWriter, r *http.Request, err error)
 
 	SigningKeyGetter func() (interface{}, error)
+
+	ContextKey struct {
+		Name string
+	}
 
 	Option struct {
 		// Required
@@ -50,8 +58,8 @@ type (
 
 		// The key name in the context where the user information
 		// from the JWT will be stored.
-		// Optional. Default: "user"
-		ContextKey string
+		// Optional. Default: UserContextKey
+		ContextKey interface{}
 
 		// When set, all requests with the OPTIONS method will use authentication
 		// Optional. Default: false
@@ -68,7 +76,7 @@ type (
 		// The function that will be called before set value into context.
 		// Used to customize the value will be stored into context.
 		// Optional. Default: ContextValueSetClaims
-		ContextValueHandler ContextValueHandler
+		ContextSetValueFunc ContextSetValueFunc
 	}
 
 	JWT struct {
@@ -76,6 +84,10 @@ type (
 		opt       Option
 	}
 )
+
+func (k *ContextKey) String() string {
+	return "jwt-middleware context value " + k.Name
+}
 
 func New(opt Option) *JWT {
 	j := new(JWT)
@@ -117,16 +129,16 @@ func New(opt Option) *JWT {
 		opt.Claims = &jwt.Claims{}
 	}
 
-	if opt.ContextKey == "" {
-		opt.ContextKey = "user"
+	if opt.ContextKey == nil {
+		opt.ContextKey = UserContextKey
 	}
 
 	if opt.ErrorHandler == nil {
 		opt.ErrorHandler = OnError
 	}
 
-	if opt.ContextValueHandler == nil {
-		opt.ContextValueHandler = ContextValueSetClaims
+	if opt.ContextSetValueFunc == nil {
+		opt.ContextSetValueFunc = ContextValueSetClaims
 	}
 
 	j.opt = opt
@@ -179,7 +191,7 @@ func (j *JWT) HandleJWT(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	value, err := j.opt.ContextValueHandler(j.opt.Claims)
+	value, err := j.opt.ContextSetValueFunc(j.opt.Claims)
 	if err != nil {
 		return err
 	}
