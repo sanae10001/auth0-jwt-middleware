@@ -110,7 +110,7 @@ func New(opt Option) *JWT {
 		if opt.JWKSUri == "" {
 			log.Panic("must provide jwks uri when method is RS256")
 		}
-		provider = auth0.NewJWKClient(auth0.JWKClientOptions{URI: opt.JWKSUri})
+		provider = auth0.NewJWKClient(auth0.JWKClientOptions{URI: opt.JWKSUri}, nil)
 	default:
 		log.Panicf("unsupported signing method=%s", opt.SigningMethod)
 	}
@@ -123,7 +123,7 @@ func New(opt Option) *JWT {
 		[]string{opt.Audience},
 		opt.Issuer,
 		opt.SigningMethod,
-	))
+	), nil)
 
 	if opt.Claims == nil {
 		opt.Claims = &jwt.Claims{}
